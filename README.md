@@ -1,33 +1,124 @@
 # Receiver
 
-**Discover radio stations you'd never find on your own.**
+Receiver is an internet radio project with two parts:
 
-Most radio apps make you search for stations by name or paste in a stream URL. Receiver flips that around — it ships with **30,000+ stations** ready to explore, each one verified and working, with clean logos, organized by tags, country and language. Just open the app and start discovering.
+- a GTK/Libadwaita desktop app written in Vala
+- `receiver-core`, a Rust library that ports the non-UI technical logic
 
-[![Flathub](https://img.shields.io/flathub/v/io.github.meehow.Receiver?style=flat-square)](https://flathub.org/apps/io.github.meehow.Receiver)
-[![Snapcraft](https://snapcraft.io/receiver/badge.svg)](https://snapcraft.io/receiver)
-[![Release](https://img.shields.io/github/v/release/meehow/receiver?style=flat-square)](https://github.com/meehow/receiver/releases)
-[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=flat-square)](LICENSE)
+The desktop app is still the runnable user-facing application. The Rust crate is
+the reusable core for station data, metadata cleanup, favourites, history,
+Last.fm, image caching, and stream URL resolution. It does not start audio
+playback itself.
 
 ![Receiver - browsing stations](data/banner.png)
 
-## Why Receiver?
+## Project Status
 
-Every station in Receiver has been **individually scanned** to verify it's reachable and actually streaming. Duplicates have been removed, broken streams filtered out, and logos fetched in proper resolution — so what you see is a clean, reliable station list, not a dump of 50,000 half-dead URLs.
+The repository currently keeps the original Vala app and adds a Rust workspace
+for the technical core.
 
-No sign-up. No ads. No popularity rankings deciding what you hear. Just radio.
+`receiver-core` is intentionally a library, not an executable. It exposes the
+logic needed by a future app or integration layer, while avoiding GTK,
+Libadwaita, GObject, MPRIS, and audio pipeline ownership.
 
-## Features
+Implemented in Rust:
 
-- 📻 **30,000+ curated stations** — deduplicated, scanned, and verified
-- 🎨 **High-quality logos** — prioritized stations with a clean, properly sized icon
-- 🔍 **Browse & search** — find stations by tags, country or language
-- ⭐ **Favourites** — save stations for quick access
-- 🎵 **Wide format support** — MP3, AAC, Ogg, and HLS streams
-- 💾 **Session persistence** — resume where you left off
-- 🎛️ **MPRIS integration** — control playback from your desktop environment
-- 🔗 **Last.fm scrobbling** — track what you listen to on your [Last.fm](https://last.fm/) profile
-- 🌍 **120 languages** — translated for users around the world
+- station model and best stream selection
+- read-only SQLite access to `data/receiver/receiver.db`
+- station search and filters using the existing database schema
+- favourites and application state JSON persistence
+- song history JSON persistence
+- ICY metadata parsing, cleanup, and artist/title extraction
+- image cache download and lookup
+- Last.fm signing, auth, now-playing, and scrobble requests
+- scrobbling state machine
+- logical player/session state with playlist and redirect resolution
+
+Not included in `receiver-core`:
+
+- GTK/Libadwaita UI
+- GStreamer or any other audio pipeline
+- MPRIS desktop integration
+- YouTube download support
+- Vala/C FFI bindings
+
+## Repository Layout
+
+```text
+src/                    Vala GTK application
+src/models/             Vala domain models
+src/services/           Vala technical services
+src/utils/              Vala parsing and utility logic
+src/widgets/            GTK/Libadwaita UI widgets
+crates/receiver-core/   Rust non-UI library
+data/                   app metadata, icons, schemas, bundled station DB
+po/                     translations
+debian/                 Debian packaging
+snap/                   Snap packaging
+subprojects/ytdl/       bundled Vala YouTube helper
+```
+
+## Rust Core
+
+Build and test the Rust library:
+
+```sh
+cargo test -p receiver-core
+```
+
+Format check:
+
+```sh
+cargo fmt --all --check
+```
+
+The Rust crate uses `rusqlite` with bundled SQLite, so tests can open the
+bundled station database without requiring the `sqlite3` CLI.
+
+Public modules:
+
+- `models` - station, stream, track, and player state data types
+- `stations` - SQLite repository and station filtering
+- `state` - favourites and settings persistence
+- `history` - recently played song persistence
+- `metadata` - ICY metadata cleanup and artist/title extraction
+- `images` - image cache and download helper
+- `lastfm` - Last.fm API client
+- `scrobbler` - scrobble timing and state
+- `player` - logical station session and stream URL resolution
+
+## Desktop App
+
+Build the existing Vala app:
+
+```sh
+make build
+```
+
+Run it from the repository:
+
+```sh
+make run
+```
+
+Clean build output:
+
+```sh
+make clean
+```
+
+Translation validation:
+
+```sh
+make translations-check
+```
+
+Packaging helpers:
+
+```sh
+make deb
+make appimage
+```
 
 ## Install
 
@@ -51,12 +142,20 @@ sudo snap install receiver
 
 ### Debian / Ubuntu
 
-Download the latest `.deb` package from the [Releases page](https://github.com/meehow/receiver/releases).
+Download a `.deb` package from the releases page and install it with:
 
 ```sh
 sudo apt install ./receiver_*.deb
 ```
 
-### From source
+## Development Notes
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions and development setup.
+- The Vala app remains independent from the Rust crate for now.
+- `receiver-core` preserves the existing station database and user data shapes
+  where they are already represented in Rust.
+- Build artifacts such as `builddir/` and `target/` are ignored.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for the broader development setup.
+
+## License
+
+Receiver is licensed under GPL-3.0-or-later. See [LICENSE](LICENSE).

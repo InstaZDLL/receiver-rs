@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/receiver-core"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/meehow/receiver"
+
